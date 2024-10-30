@@ -1,100 +1,5 @@
 import socket
 
-def pad_message(text):
-    padding_length = 8 - (len(text) % 8)
-    padding = chr(padding_length) * padding_length
-    return text + padding
-
-def string_to_binary(text):
-    binary = ''
-    for char in text:
-        binary += format(ord(char), '08b')
-    return binary
-
-def binary_to_hex(binary):
-    decimal = int(binary, 2)
-    hexadecimal = hex(decimal)[2:].upper()
-    return hexadecimal.zfill(16)
-
-def permute(k, arr, n):
-    permutation = ""
-    for i in range(0, n):
-        permutation += k[arr[i] - 1]
-    return permutation
-
-def shift_left(k, nth_shifts):
-    return k[nth_shifts:] + k[:nth_shifts]
-
-def encrypt(plain_text, rkb):
-    plain_text = string_to_binary(plain_text)
-    
-    # Initial Permutation
-    plain_text = permute(plain_text, IP, 64)
-    
-    # Splitting
-    left = plain_text[0:32]
-    right = plain_text[32:64]
-    
-    for i in range(0, 16):
-        # Expansion D-box
-        right_expanded = permute(right, E, 48)
-        
-        # XOR RoundKey[i] and right_expanded
-        xor_x = bin(int(right_expanded, 2) ^ int(rkb[i], 2))[2:].zfill(48)
-        
-        # S-box
-        sbox_str = ""
-        for j in range(0, 8):
-            row = int(xor_x[j * 6] + xor_x[j * 6 + 5], 2)
-            col = int(xor_x[j * 6 + 1:j * 6 + 5], 2)
-            val = S_BOXES[j][row][col]
-            sbox_str += format(val, '04b')
-            
-        # Permutation
-        sbox_str = permute(sbox_str, P, 32)
-        
-        # XOR left and sbox_str
-        result = bin(int(left, 2) ^ int(sbox_str, 2))[2:].zfill(32)
-        left = result
-        
-        if(i != 15):
-            left, right = right, left
-            
-    # Combination
-    combine = left + right
-    
-    # Final permutation
-    cipher_text = permute(combine, FP, 64)
-    return binary_to_hex(cipher_text)
-
-def generate_keys(key):
-    # Key generation
-    key = string_to_binary(key)
-    
-    # PC1 table
-    key = permute(key, PC1, 56)
-    
-    # Splitting
-    left = key[0:28]
-    right = key[28:56]
-    
-    rkb = []  # rkb for RoundKeys in binary
-    
-    for i in range(0, 16):
-        # Shifting
-        left = shift_left(left, SHIFT_TABLE[i])
-        right = shift_left(right, SHIFT_TABLE[i])
-        
-        # Combining
-        combine_str = left + right
-        
-        # PC2 table
-        round_key = permute(combine_str, PC2, 48)
-        
-        rkb.append(round_key)
-        
-    return rkb
-
 IP = [58, 50, 42, 34, 26, 18, 10, 2,
       60, 52, 44, 36, 28, 20, 12, 4,
       62, 54, 46, 38, 30, 22, 14, 6,
@@ -190,38 +95,200 @@ P = [16, 7, 20, 21, 29, 12, 28, 17,
 SHIFT_TABLE = [1, 1, 2, 2, 2, 2, 2, 2,
                1, 2, 2, 2, 2, 2, 2, 1]
 
+def pad_message(text):
+    padding_length = 8 - (len(text) % 8)
+    padding = chr(padding_length) * padding_length
+    return text + padding
+
+def string_to_binary(text):
+    binary = ''
+    for char in text:
+        binary += format(ord(char), '08b')
+    return binary
+
+def binary_to_hex(binary):
+    decimal = int(binary, 2)
+    hexadecimal = hex(decimal)[2:].upper()
+    return hexadecimal.zfill(16)
+
+def hex_to_binary(hex_str):
+    binary = bin(int(hex_str, 16))[2:]
+    return binary.zfill(64)
+
+def binary_to_string(binary):
+    text = ''
+    for i in range(0, len(binary), 8):
+        byte = binary[i:i+8]
+        text += chr(int(byte, 2))
+    return text
+
+def permute(k, arr, n):
+    permutation = ""
+    for i in range(0, n):
+        permutation += k[arr[i] - 1]
+    return permutation
+
+def shift_left(k, nth_shifts):
+    return k[nth_shifts:] + k[:nth_shifts]
+
+def encrypt(plain_text, rkb):
+    plain_text = string_to_binary(plain_text)
+    
+    # Initial Permutation
+    plain_text = permute(plain_text, IP, 64)
+    
+    # Splitting
+    left = plain_text[0:32]
+    right = plain_text[32:64]
+    
+    for i in range(0, 16):
+        # Expansion D-box
+        right_expanded = permute(right, E, 48)
+        
+        # XOR RoundKey[i] and right_expanded
+        xor_x = bin(int(right_expanded, 2) ^ int(rkb[i], 2))[2:].zfill(48)
+        
+        # S-box
+        sbox_str = ""
+        for j in range(0, 8):
+            row = int(xor_x[j * 6] + xor_x[j * 6 + 5], 2)
+            col = int(xor_x[j * 6 + 1:j * 6 + 5], 2)
+            val = S_BOXES[j][row][col]
+            sbox_str += format(val, '04b')
+            
+        # Permutation
+        sbox_str = permute(sbox_str, P, 32)
+        
+        # XOR left and sbox_str
+        result = bin(int(left, 2) ^ int(sbox_str, 2))[2:].zfill(32)
+        left = result
+        
+        if(i != 15):
+            left, right = right, left
+            
+    # Combination
+    combine = left + right
+    
+    # Final permutation
+    cipher_text = permute(combine, FP, 64)
+    return binary_to_hex(cipher_text)
+
+def decrypt(cipher_text, rkb):
+    # Reverse the round keys for decryption
+    rkb_rev = rkb[::-1]
+    
+    # Convert hex to binary
+    cipher_text = hex_to_binary(cipher_text)
+    
+    # Initial Permutation
+    cipher_text = permute(cipher_text, IP, 64)
+    
+    # Splitting
+    left = cipher_text[0:32]
+    right = cipher_text[32:64]
+    
+    for i in range(16):
+        # Expansion D-box
+        right_expanded = permute(right, E, 48)
+        
+        # XOR RoundKey[i] and right_expanded
+        xor_x = bin(int(right_expanded, 2) ^ int(rkb_rev[i], 2))[2:].zfill(48)
+        
+        # S-box
+        sbox_str = ""
+        for j in range(0, 8):
+            row = int(xor_x[j * 6] + xor_x[j * 6 + 5], 2)
+            col = int(xor_x[j * 6 + 1:j * 6 + 5], 2)
+            val = S_BOXES[j][row][col]
+            sbox_str += format(val, '04b')
+            
+        # Permutation
+        sbox_str = permute(sbox_str, P, 32)
+        
+        # XOR left and sbox_str
+        result = bin(int(left, 2) ^ int(sbox_str, 2))[2:].zfill(32)
+        left = result
+        
+        if(i != 15):
+            left, right = right, left
+            
+    # Combination
+    combine = left + right
+    
+    # Final permutation
+    plain_text = permute(combine, FP, 64)
+    return binary_to_string(plain_text)
+
+def generate_keys(key):
+    # Key generation
+    key = string_to_binary(key)
+    
+    # PC1 table
+    key = permute(key, PC1, 56)
+    
+    # Splitting
+    left = key[0:28]
+    right = key[28:56]
+    
+    rkb = []  # rkb for RoundKeys in binary
+    
+    for i in range(0, 16):
+        # Shifting
+        left = shift_left(left, SHIFT_TABLE[i])
+        right = shift_left(right, SHIFT_TABLE[i])
+        
+        # Combining
+        combine_str = left + right
+        
+        # PC2 table
+        round_key = permute(combine_str, PC2, 48)
+        
+        rkb.append(round_key)
+        
+    return rkb
+
 def main():
     # Socket setup
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client.connect(('localhost', 5000))
+    client.connect(('localhost', 5001))
     
     try:
-        # Get message from user
-        message = input("Enter message to send: ")
-        
-        # Pad message if necessary
-        padded_message = pad_message(message)
-        
-        # Generate round keys
+        # Receive message from server 1
+        encrypted_message = client.recv(1024).decode()
+        print(f"Pesan Enkripsi dari server 1: {encrypted_message}")
+
+        # Decrypt the received message
         key = "AABB09182736CCDD"  # 64-bit key
         round_keys = generate_keys(bytes.fromhex(key).decode('latin-1'))
         
-        # Encrypt message block by block
-        encrypted_message = ""
+        decrypted_message = ""
+        for i in range(0, len(encrypted_message), 16):
+            block = encrypted_message[i:i+16]
+            decrypted_block = decrypt(block, round_keys)
+            decrypted_message += decrypted_block
+        
+        # Correctly handling padding
+        padding_length = ord(decrypted_message[-1])
+        decrypted_message = decrypted_message[:-padding_length]
+    
+        print(f"Hasil Dekripsi: {decrypted_message}")
+
+        # Prepare to send a response
+        message_to_send = input("Masukkan pesan untuk dikirim: ")
+        padded_message = pad_message(message_to_send)
+        
+        # Encrypt response message block by block
+        encrypted_response = ""
         for i in range(0, len(padded_message), 8):
             block = padded_message[i:i+8]
             encrypted_block = encrypt(block, round_keys)
-            encrypted_message += encrypted_block
+            encrypted_response += encrypted_block
         
-        print(f"Encrypted message: {encrypted_message}")
+        print(f"Hasil Enkripsi: {encrypted_response}")
         
-        # Send encrypted message
-        client.send(encrypted_message.encode())
-        
-        # Receive response
-        response = client.recv(1024).decode()
-        print(f"Server response: {response}")
-        
+        # Send encrypted response back to server 1
+        client.send(encrypted_response.encode())
+    
     except Exception as e:
         print(f"Error: {e}")
     
